@@ -112,12 +112,12 @@ To cite the dataset, please use:
 or use the BibTex entry
 
     @misc{BrockDoseFindingData,
-      author = {Kristian Brock and Victoria Homer and Gurjinder Soul and Claire Potter and Cody Chiuzan and Shing Lee},
-      year = {2019},
-      title = {{Dose-level toxicity and efficacy outcomes from dose-finding clinical trials in oncology},
-      doi = {10.5072/eData.bham.00000337},
-      howpublished= {\url{https://doi.org/10.5072/eData.bham.00000337}},
-      timestamp = {2019.05.05}
+        author = {Kristian Brock and Victoria Homer and Gurjinder Soul and Claire Potter and Cody Chiuzan and Shing Lee},
+        year = {2019},
+        title = {Dose-level toxicity and efficacy outcomes from dose-finding clinical trials in oncology},
+        doi = {10.5072/eData.bham.00000337},
+        howpublished= {\url{https://doi.org/10.5072/eData.bham.00000337}},
+        timestamp = {2019.05.05}
     }
 
 ## File format
