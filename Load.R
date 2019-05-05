@@ -5,13 +5,14 @@ library(stringr)
 
 # TODO: file will move to
 # http://edata.bham.ac.uk/337/1/Database.xlsx
-file_path = '../Database.xlsx'
+file_path = 'C:/Scratch/DoseFindingOutcomes/Database.xlsx'
 
 manuscripts <- read_excel(file_path, sheet = 'Manuscripts')
 studies <- read_excel(file_path, sheet = 'Studies')
 outcomes <- read_excel(file_path, sheet = 'Outcomes')
 binary_events <- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
 binary_series <- read_excel(file_path, sheet = 'BinaryOutcomeAnalysisSeries')
+
 
 # OutcomeId of useful outcomes ----
 # DLT:

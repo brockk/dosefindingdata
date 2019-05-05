@@ -1,5 +1,5 @@
 ---
-title: "TODO - Submission to ICTMC 2019"
+title: "A meta-analysis of toxicity and efficacy outcomes by dose in recent phase I trials in oncology"
 author: "Kristian Brock"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: github_document
@@ -10,22 +10,46 @@ bibliography: ../../bibliography.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+This document contains the submission of Brock, Homer, Soul, Potter, Chuzan & Lee to the ICTMC conference in 2019.
 The title is limited to 50 words.
 The abstract is limited to 300 words.
-
+The submission form does not mention how to cite so I am guessing references should be informal.
 
 ## Abstract 
 
-### Background
+### Introduction
+Dose-finding trials commonly seek to identify a maximum tolerable dose. 
+Common experimental designs include the rule-based 3+3, and the model-based continual reassessment method (CRM, O'Quigley, 1990). 
+Each assumes that the probabilities of toxicity and efficacy increase monotonically as dose is increased. 
+If this assumption is violated, these methods may recommend inappropriate doses. 
 
 ### Methods
+We collated a dataset to investigate the appropriateness of these assumptions. 
+Chiuzan _et al._ (2017) conducted a systematic methodology review of oncology dose-finding trials between 2008 and 2014. 
+We extracted dose-level response and dose-limiting toxicity (DLT) outcomes from 122 manuscripts in their sample.
+We then analysed the series individually using simple logistic regression models, and collectively using hierarchical Bayesian models. 
 
 ### Results
+DLT outcomes were collected for 131 series of fully-ordered doses.
+Several manuscripts yielded more than one series.
+DLT outcomes convincingly had a positive gradient with respect to dose for many treatment classes, including chemotherapy, inhibitors, and radiotherapy.
+Monotonicity was less certain for monoclonal antibodies, although sample size was small.
+
+Response outcomes were collected for 77 series.
+Evidence was weak that the probability of response increased with dose in all treatment types.
+Generally, the odds of toxicity increased faster than odds of response. 
 
 ### Conclusions
+Rationale dictates that subtherapeutic doses exist. 
+In recent dose-finding trials, these data suggest that escalations have tended to coerce greater toxicity risk without commensurate increases in efficacy.
+This asymmetry suggests that trialists should avoid relying unduly on establishing a maximum tolerable dose and instead focus on identifying a dose that offers an attractive trade-off between toxicity and response.
+Use of so-called seamless phase I/II designs could help achieve this goal, including EffTox (Thall & Cook, 2004) and Wages & Tait (2015).
+
+
 
 ### Availability of materials
-The dataset is available at 
+The full dataset is available at: 
 http://edata.bham.ac.uk/337/1/Database.xlsx
-and this article and the accompanying analysis are available at 
-https://github.com/brockk/dosefindingdata
+
+This article and accompanying analyses are available at: 
+https://github.com/brockk/dosefindingdata/tree/master/docs/ICTMC2019
