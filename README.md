@@ -1,7 +1,7 @@
 Outcomes in Dose-Finding Trials
 ================
 Kristian Brock
-05 May, 2019
+14 May, 2019
 
   - [Introduction](#introduction)
   - [Data](#data)
@@ -107,7 +107,7 @@ To cite the dataset, please use:
 > Kristian Brock, Victoria Homer, Gurjinder Soul, Claire Potter, Cody
 > Chiuzan and Shing Lee “Dose-level toxicity and efficacy outcomes from
 > dose-finding clinical trials in oncology”. 2019. doi:
-> 10.5072/eData.bham.00000337
+> 10.25500/edata.bham.00000337
 
 or use the BibTex entry
 
@@ -115,8 +115,8 @@ or use the BibTex entry
         author = {Kristian Brock and Victoria Homer and Gurjinder Soul and Claire Potter and Cody Chiuzan and Shing Lee},
         year = {2019},
         title = {Dose-level toxicity and efficacy outcomes from dose-finding clinical trials in oncology},
-        doi = {10.5072/eData.bham.00000337},
-        howpublished= {\url{https://doi.org/10.5072/eData.bham.00000337}},
+        doi = {10.25500/edata.bham.00000337},
+        howpublished= {\url{https://doi.org/10.25500/edata.bham.00000337}},
         timestamp = {2019.05.05}
     }
 
