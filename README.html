@@ -7,6 +7,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 <meta name="author" content="Kristian Brock" />
@@ -255,9 +256,7 @@ h6 {
 </style>
 
 
-</head>
 
-<body>
 
 <style type="text/css">
 .main-container {
@@ -282,22 +281,80 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
 
-<div class="container-fluid main-container">
-
 <!-- tabsets -->
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-</script>
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
 
 <!-- code folding -->
 
 
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
 
 
 
@@ -307,8 +364,8 @@ $(document).ready(function () {
 
 
 <h1 class="title toc-ignore">Outcomes in Dose-Finding Trials</h1>
-<h4 class="author"><em>Kristian Brock</em></h4>
-<h4 class="date"><em>14 May, 2019</em></h4>
+<h4 class="author">Kristian Brock</h4>
+<h4 class="date">22 August, 2019</h4>
 
 </div>
 
@@ -325,13 +382,13 @@ library(dplyr)
 
 # The file will eventually move to:
 # http://edata.bham.ac.uk/337/1/Database.xlsx
-file_path = &#39;../Database.xlsx&#39;
+file_path = '../Database.xlsx'
 
-manuscripts &lt;- read_excel(file_path, sheet = &#39;Manuscripts&#39;)
-studies &lt;- read_excel(file_path, sheet = &#39;Studies&#39;)
-outcomes &lt;- read_excel(file_path, sheet = &#39;Outcomes&#39;)
-binary_events &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeEvents&#39;)
-# binary_series &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeAnalysisSeries&#39;)</code></pre>
+manuscripts &lt;- read_excel(file_path, sheet = 'Manuscripts')
+studies &lt;- read_excel(file_path, sheet = 'Studies')
+outcomes &lt;- read_excel(file_path, sheet = 'Outcomes')
+binary_events &lt;- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
+# binary_series &lt;- read_excel(file_path, sheet = 'BinaryOutcomeAnalysisSeries')</code></pre>
 <pre class="r"><code>manuscripts %&gt;% nrow</code></pre>
 <pre><code>## [1] 122</code></pre>
 <pre class="r"><code>studies %&gt;% nrow</code></pre>
@@ -339,10 +396,10 @@ binary_events &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeEvents&#39;)
 <p>Data have been extracted from 139 studies in 122 manuscripts.</p>
 <pre class="r"><code>outcomes %&gt;% nrow</code></pre>
 <pre><code>## [1] 96</code></pre>
-<p>The database contains data on 96 different outcome measures. However, some of these are very sparsely reported.</p>
+<p>The database contains data on 96 different outcome measures. However, some of these are reported much more frequently than others.</p>
 <pre class="r"><code>binary_events %&gt;% 
-  left_join(studies, by = &#39;Study&#39;) %&gt;% 
-  left_join(outcomes, by = &#39;OutcomeId&#39;) %&gt;% 
+  left_join(studies, by = 'Study') %&gt;% 
+  left_join(outcomes, by = 'OutcomeId') %&gt;% 
   group_by(Outcome = OutcomeText) %&gt;% 
   summarise(
     NumObs = n(), 
@@ -400,11 +457,13 @@ binary_events &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeEvents&#39;)
 </tr>
 </tbody>
 </table>
-<p>Overwhelmingly the most commonly reported outcome measure by dose is incidence of DLT. 131 studies report this outcome, with an average of 4.9 datapoints per series. Efficacy outcomes are reported far less frequently but objective response as measured by RECIST <span class="citation">(Eisenhauer et al. 2009)</span> is reported in over 50 studies.</p>
-<div id="availability" class="section level2">
-<h2>Availability</h2>
+<p>Overwhelmingly the most commonly reported outcome measure by dose is incidence of DLT. 131 studies report this outcome, with an average of 4.9 doses per series. Efficacy outcomes are reported far less frequently. Objective response as measured by RECIST <span class="citation">(Eisenhauer et al. 2009)</span> is reported in 54 studies.</p>
+<div id="availability-of-data" class="section level2">
+<h2>Availability of data</h2>
 <p>The dataset is available at:</p>
-<p><a href="http://edata.bham.ac.uk/337/1/Database.xlsx" class="uri">http://edata.bham.ac.uk/337/1/Database.xlsx</a></p>
+<p><a href="https://edata.bham.ac.uk/337/#" class="uri">https://edata.bham.ac.uk/337/#</a></p>
+<p>As at 2019-08-22, the latest version is 1.1, available at</p>
+<p><a href="http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx" class="uri">http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx</a></p>
 </div>
 <div id="citing-the-work" class="section level2">
 <h2>Citing the work</h2>
@@ -412,7 +471,6 @@ binary_events &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeEvents&#39;)
 <blockquote>
 <p>Kristian Brock, Victoria Homer, Gurjinder Soul, Claire Potter, Cody Chiuzan and Shing Lee “Dose-level toxicity and efficacy outcomes from dose-finding clinical trials in oncology”. 2019. doi: 10.25500/edata.bham.00000337</p>
 </blockquote>
-<p>or use the BibTex entry</p>
 <pre><code>@misc{BrockDoseFindingData,
     author = {Kristian Brock and Victoria Homer and Gurjinder Soul and Claire Potter and Cody Chiuzan and Shing Lee},
     year = {2019},
@@ -424,7 +482,7 @@ binary_events &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeEvents&#39;)
 </div>
 <div id="file-format" class="section level2">
 <h2>File format</h2>
-<p>The <code>database.xlsx</code> file contains many tabs. The following sections describe in depth the format of the file.</p>
+<p>The <code>database</code> file contains many tabs. The following sections describe in depth the format of the file.</p>
 <div id="manuscripts" class="section level3">
 <h3>Manuscripts</h3>
 <p>This tab details the manuscripts studied in this research.</p>
@@ -509,7 +567,7 @@ binary_events &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeEvents&#39;)
 </ul></li>
 <li><code>Include</code>, <code>bool</code>: This may be deprecated.</li>
 <li><code>HighIsGood</code>, <code>bool</code>: <code>TRUE</code> if a high value is a good thing for patients. FALSE otherwise. E.g. high response rate is good and low toxicity rate is good.</li>
-<li><code>PerPatientOutcome</code>, <code>bool</code>: <code>TRUE</code> if the outcome measure is binary at the patient level, e.g. “Any AE” is binary at the patient-level because a patient either experiences any AE (in which case it is <code>TRUE</code>) or they do not (in which case it is <code>FALSE</code>). In contrast, “Total AEs” is not binary because a patient may experience many AEs.</li>
+<li><code>PerPatientOutcome</code>, <code>bool</code>: <code>TRUE</code> if the outcome measure is binary at the patient level, e.g. “Any AE” is binary at the patient-level because a patient either experiences any AE (in which case it is <code>TRUE</code>) or they do not (in which case it is <code>FALSE</code>). In contrast, “Total AEs” is not binary because a patient may experience many AEs.</li>
 <li><code>Note</code>, <code>string</code>: Items noted during data extraction.</li>
 </ul>
 </div>
@@ -528,7 +586,7 @@ binary_events &lt;- read_excel(file_path, sheet = &#39;BinaryOutcomeEvents&#39;)
 </div>
 <div id="binaryoutcomeanalyisseries" class="section level3">
 <h3>BinaryOutcomeAnalyisSeries</h3>
-<p>Doses investigated and reported in clinial trials are not always monotonically increasing, despite the fact that they should be under the most commonly-used experimental designs like 3+3 and CRM. Blithely analysing all of the doses as they are reported in publications would sometimes create scenarios where it is impossible to definitively say whether a dose is greater or less than some other (e.g. “5mg per day” vs “10mg every second day”; or “10mg of A + 5mg of B” vs “5mg of A + 10mg of B”).</p>
+<p>Doses investigated and reported in clinial trials are not always monotonically increasing, despite the fact that they should be under the most commonly-used experimental designs like 3+3 and CRM. Blithely analysing all of the doses as they are reported in publications would sometimes create scenarios where it is impossible to definitively say whether a dose is greater or less than some other (e.g. “5mg per day” vs “10mg every second day”; or “10mg of A + 5mg of B” vs “5mg of A + 10mg of B”).</p>
 <p>An analysis-series is a set of doses from a particular study that are strictly monotonically increasing, evaluated with respect to a particular outcome measure. There are many ways to create such subsets. The analysis series presented here are merely those preferred by the author. They favour series with as many doses as possible (whilst still retaining unambiguous monotonic order) and as little repetition as possible. A small amount of repetition has been tolerated where necessary to avoid an “orphaned” dose-level, i.e. a dose-level with no comparator.</p>
 <p>You are free to create our own analysis-series if you prefer.</p>
 <p>Columns:</p>
@@ -575,6 +633,23 @@ $(document).ready(function () {
 
 
 </script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>

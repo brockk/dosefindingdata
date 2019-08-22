@@ -3,9 +3,10 @@ library(readxl)
 library(dplyr)
 library(stringr)
 
-# TODO: file will move to
-# http://edata.bham.ac.uk/337/1/Database.xlsx
-file_path = 'C:/Scratch/DoseFindingOutcomes/Database.xlsx'
+# Download the Database file from:
+# http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx
+# and save it in a convenient place:
+file_path = '~/ownCloud/Research/Phase1Outcomes/Database.xlsx'
 
 manuscripts <- read_excel(file_path, sheet = 'Manuscripts')
 studies <- read_excel(file_path, sheet = 'Studies')

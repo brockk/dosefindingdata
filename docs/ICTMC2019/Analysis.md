@@ -1,7 +1,7 @@
 Analysis supporting ICTMC2019 submission
 ================
 Kristian Brock
-05 May, 2019
+22 August, 2019
 
 Load data:
 
@@ -135,13 +135,13 @@ become more likely as dose is increased:
 mean(dlt_models$dose_grad > 0)
 ```
 
-    ## [1] 0.7806452
+    ## [1] 0.7741935
 
 ``` r
 mean(obj_resp_models$dose_grad > 0)
 ```
 
-    ## [1] 0.5053763
+    ## [1] 0.4946237
 
 In 78% of the fitted DLT models, DLT incidence is seen to be positively
 related to dose level. This is consistent with the adage *the dose makes

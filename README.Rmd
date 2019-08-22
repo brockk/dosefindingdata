@@ -28,8 +28,9 @@ We describe briefly here the volume of data contained.
 library(readxl)
 library(dplyr)
 
-# The file will eventually move to:
-# http://edata.bham.ac.uk/337/1/Database.xlsx
+# Download the Database file from:
+# http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx
+# and save it in a convenient place:
 file_path = '../Database.xlsx'
 
 manuscripts <- read_excel(file_path, sheet = 'Manuscripts')
@@ -49,7 +50,7 @@ Data have been extracted from 139 studies in 122 manuscripts.
 outcomes %>% nrow
 ```
 The database contains data on 96 different outcome measures.
-However, some of these are very sparsely reported.
+However, some of these are reported much more frequently than others.
 
 ```{r}
 binary_events %>% 
@@ -67,15 +68,21 @@ binary_events %>%
 ```
 
 Overwhelmingly the most commonly reported outcome measure by dose is incidence of DLT.
-131 studies report this outcome, with an average of 4.9 datapoints per series.
-Efficacy outcomes are reported far less frequently but objective response as measured by RECIST [@Eisenhauer2009] is reported in over 50 studies.
+131 studies report this outcome, with an average of 4.9 doses per series.
+Efficacy outcomes are reported far less frequently.
+Objective response as measured by RECIST [@Eisenhauer2009] is reported in 54 studies.
 
 
 
-## Availability
+## Availability of data
 The dataset is available at:
 
-http://edata.bham.ac.uk/337/1/Database.xlsx
+https://edata.bham.ac.uk/337/#
+
+As at 2019-08-22, the latest version is 1.1, available at 
+
+http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx
+
 
 
 ## Citing the work
@@ -85,7 +92,7 @@ To cite the dataset, please use:
 "Dose-level toxicity and efficacy outcomes from dose-finding clinical trials in oncology". 2019.
 doi: 10.25500/edata.bham.00000337
 
-or use the BibTex entry 
+or use the BibTex entry
 
 ~~~~
 @misc{BrockDoseFindingData,
@@ -101,7 +108,7 @@ or use the BibTex entry
 
 
 ## File format
-The `database.xlsx` file contains many tabs.
+The `database` file contains many tabs.
 The following sections describe in depth the format of the file.
 
 ### Manuscripts
