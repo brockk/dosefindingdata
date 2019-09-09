@@ -201,7 +201,7 @@ test_that('Doses and dose-levels largely pair up within study', {
   # Legitimate violations arise when:
   # dlt and objective response are presented in non-congruent ways;
   # a dose appears in many series to avoid orphaned data.
-  expect_less_than(
+  expect_lt(
     dlt %>%
       inner_join(obj_resp, by = c('Study' = 'Study',
                                   'Dose' = 'Dose'),
@@ -227,3 +227,4 @@ test_that('The AnalysisSeriesIds for a study never span more than 30', {
     0
   )
 })
+
