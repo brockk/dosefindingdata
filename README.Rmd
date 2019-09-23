@@ -12,6 +12,8 @@ bibliography: bibliography.bib
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+source('Load.R')
 ```
 
 # Introduction
@@ -37,15 +39,27 @@ manuscripts <- read_excel(file_path, sheet = 'Manuscripts')
 studies <- read_excel(file_path, sheet = 'Studies')
 outcomes <- read_excel(file_path, sheet = 'Outcomes')
 binary_events <- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
-# binary_series <- read_excel(file_path, sheet = 'BinaryOutcomeAnalysisSeries')
 ```
+
+
+### Manuscripts and studies
+```{r}
+studies %>% nrow
+manuscripts %>% nrow
+```
+
+Data have been extracted from 139 studies in 122 manuscripts.
+There are more manuscripts than studies because some manuscripts report results from several studies.
 
 ```{r}
-manuscripts %>% nrow
-studies %>% nrow
+manuscripts %>% count(Source) %>% knitr::kable()
 ```
-Data have been extracted from 139 studies in 122 manuscripts.
 
+Data were extracted for every manucript identified in _Chiuzan et al._ that used a model-based dose-finding method.
+Additionally, data were extracted from 30 of the 1,591 manuscripts identified by _Chiuzan et al._ that used a rule-based method.
+These were randomly selected.
+
+### Outcomes
 ```{r}
 outcomes %>% nrow
 ```
@@ -55,23 +69,71 @@ However, some of these are reported much more frequently than others.
 ```{r}
 binary_events %>% 
   left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
   left_join(outcomes, by = 'OutcomeId') %>% 
   group_by(Outcome = OutcomeText) %>% 
   summarise(
     NumObs = n(), 
-    NumStudies = length(unique(Study))
-    ) %>% 
+    NumStudies = length(unique(Study)),
+    NumManuscripts = length(unique(Manuscript))
+  ) %>% 
   mutate(ObsPerStudy = NumObs / NumStudies) %>% 
   arrange(-NumObs) %>% 
-  head %>% 
-  knitr::kable(digits = 1)
+  head %>% knitr::kable()
 ```
 
 Overwhelmingly the most commonly reported outcome measure by dose is incidence of DLT.
-131 studies report this outcome, with an average of 4.9 doses per series.
+131 studies from 107 manuscripts report this outcome, with an average of 4.9 doses per series.
 Efficacy outcomes are reported far less frequently.
 Objective response as measured by RECIST [@Eisenhauer2009] is reported in 54 studies.
 
+
+### Analysis series
+
+An analysis series constitutes a set of doses that can be unambiguously ordered from lowest to highest, with outcomes and the number of exposed patients reported at each dose.
+Some studies report dose-level data that are not unambiguous in their order. 
+E.g. it is impossible to say whether _10mg A + 10mg B_ is greater than or less than _20mg A + 5mg B_.
+The outcomes from studies were split into so called _analysis series_, subsets of data where the doses can be unambiguously ordered.
+This results in potentially many analysis series per study.
+For convenience, the analysis series are grouped for DLT outcomes (in object `dlt`), RECIST objective response (in object `recist_obj_resp`), and any objective response including RECIST-analogues in haematological studies like the Cheson crieteria (in object `obj_resp`) by the `Load.R` script.
+
+```{r}
+dlt %>% 
+  group_by(AnalysisSeriesId) %>% 
+  summarise(NumDoses = n()) %>% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %>% 
+  head %>% knitr::kable()
+```
+
+```{r}
+dlt %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
+  group_by(Source, AnalysisSeriesId) %>% 
+  summarise(NumDoses = n()) %>% 
+  group_by(Source) %>% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %>% 
+  head %>% knitr::kable()
+```
+
+```{r}
+obj_resp %>% 
+  group_by(AnalysisSeriesId) %>% 
+  summarise(NumDoses = n()) %>% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %>% 
+  head %>% knitr::kable()
+```
+
+```{r}
+obj_resp %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
+  group_by(Source, AnalysisSeriesId) %>% 
+  summarise(NumDoses = n()) %>% 
+  group_by(Source) %>% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %>% 
+  head %>% knitr::kable()
+```
 
 
 ## Availability of data
@@ -151,7 +213,8 @@ Columns:
   - `Mixed`, if both disease types were studied.
   - `Unknown`, where not specified.
 - `Treatment`, `string`: brief description of all treatments given, whether dose-varying or not.
-- `ContainsChemo`, `bool`: `TRUE` if the treatment contains a chemotherapy element. This is provided to address the reasonable expectation that the presence of chemotherapy increases the expectation of toxicity. A full decomposition of treatment types is not provided here (e.g. there is no ContainsInhibitor field) but standardised types of the dose-varying treatment(s) are given in the column DoseVaryingTreatmentType. A special case is made here for chemo to allow an analysis to reflect the reasonably-expected population-level effect that chemotherapy is associated with toxicity.
+- `ContainsChemo`, `bit`: `1` if the treatment contains any chemotherapy element, fixed-dose or dose-varying. A full decomposition of treatment types is not provided here (e.g. there is no ContainsInhibitor field) but standardised types of the dose-varying treatment(s) are given in the column DoseVaryingTreatmentType. 
+- `FixedDoseChemo`, `bit`: `1` if the treatment contains a fixed-dose chemotherapy component; `0` if there is no fixed-dose chemo element. Note if chemotherapy is included only as part of the investigative treatment and thus has its dose varied, this field will be `0`. This field is provided to address the reasonable expectation that the presence of a standard chemotherapy backbone increases the expectation of toxicity. A special case is made here for chemo to allow an analysis to reflect the reasonably-expected population-level effect that chemotherapy is associated with greater toxicity (and perhaps also response).
 - `DoseVaryingTreatment`, `string`: the treatment(s) that have their dose varied. In the case of many treatments, items are separated by the + symbol. Any treatment identified in Treatment but not in DoseVaryingTreatment can be assumed to be constant across the doses under investigation.
 - `DoseVaryingTreatmentType`, `string`: type of the treatment(s) undergoing dose variation. Options are:
   - `Cell therapy`

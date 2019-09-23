@@ -365,7 +365,7 @@ summary {
 
 <h1 class="title toc-ignore">Outcomes in Dose-Finding Trials</h1>
 <h4 class="author">Kristian Brock</h4>
-<h4 class="date">22 August, 2019</h4>
+<h4 class="date">17 September, 2019</h4>
 
 </div>
 
@@ -380,41 +380,68 @@ summary {
 <pre class="r"><code>library(readxl)
 library(dplyr)
 
-# The file will eventually move to:
-# http://edata.bham.ac.uk/337/1/Database.xlsx
+# Download the Database file from:
+# http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx
+# and save it in a convenient place:
 file_path = '../Database.xlsx'
 
 manuscripts &lt;- read_excel(file_path, sheet = 'Manuscripts')
 studies &lt;- read_excel(file_path, sheet = 'Studies')
 outcomes &lt;- read_excel(file_path, sheet = 'Outcomes')
-binary_events &lt;- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
-# binary_series &lt;- read_excel(file_path, sheet = 'BinaryOutcomeAnalysisSeries')</code></pre>
-<pre class="r"><code>manuscripts %&gt;% nrow</code></pre>
-<pre><code>## [1] 122</code></pre>
+binary_events &lt;- read_excel(file_path, sheet = 'BinaryOutcomeEvents')</code></pre>
+<div id="manuscripts-and-studies" class="section level3">
+<h3>Manuscripts and studies</h3>
 <pre class="r"><code>studies %&gt;% nrow</code></pre>
 <pre><code>## [1] 139</code></pre>
-<p>Data have been extracted from 139 studies in 122 manuscripts.</p>
+<pre class="r"><code>manuscripts %&gt;% nrow</code></pre>
+<pre><code>## [1] 122</code></pre>
+<p>Data have been extracted from 139 studies in 122 manuscripts. There are more manuscripts than studies because some manuscripts report results from several studies.</p>
+<pre class="r"><code>manuscripts %&gt;% count(Source) %&gt;% knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Source</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">ChiuzanModelBased</td>
+<td align="right">92</td>
+</tr>
+<tr class="even">
+<td align="left">ChiuzanRuleBased1</td>
+<td align="right">30</td>
+</tr>
+</tbody>
+</table>
+<p>Data were extracted for every manucript identified in <em>Chiuzan et al.</em> that used a model-based dose-finding method. Additionally, data were extracted from 30 of the 1,591 manuscripts identified by <em>Chiuzan et al.</em> that used a rule-based method. These were randomly selected.</p>
+</div>
+<div id="outcomes" class="section level3">
+<h3>Outcomes</h3>
 <pre class="r"><code>outcomes %&gt;% nrow</code></pre>
 <pre><code>## [1] 96</code></pre>
 <p>The database contains data on 96 different outcome measures. However, some of these are reported much more frequently than others.</p>
 <pre class="r"><code>binary_events %&gt;% 
   left_join(studies, by = 'Study') %&gt;% 
+  left_join(manuscripts, by = 'Manuscript') %&gt;% 
   left_join(outcomes, by = 'OutcomeId') %&gt;% 
   group_by(Outcome = OutcomeText) %&gt;% 
   summarise(
     NumObs = n(), 
-    NumStudies = length(unique(Study))
-    ) %&gt;% 
+    NumStudies = length(unique(Study)),
+    NumManuscripts = length(unique(Manuscript))
+  ) %&gt;% 
   mutate(ObsPerStudy = NumObs / NumStudies) %&gt;% 
   arrange(-NumObs) %&gt;% 
-  head %&gt;% 
-  knitr::kable(digits = 1)</code></pre>
+  head %&gt;% knitr::kable()</code></pre>
 <table>
 <thead>
 <tr class="header">
 <th align="left">Outcome</th>
 <th align="right">NumObs</th>
 <th align="right">NumStudies</th>
+<th align="right">NumManuscripts</th>
 <th align="right">ObsPerStudy</th>
 </tr>
 </thead>
@@ -423,41 +450,148 @@ binary_events &lt;- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
 <td align="left">Patients with DLT</td>
 <td align="right">648</td>
 <td align="right">131</td>
-<td align="right">4.9</td>
+<td align="right">107</td>
+<td align="right">4.946565</td>
 </tr>
 <tr class="even">
 <td align="left">Patients with Objective Response by RECIST</td>
 <td align="right">273</td>
 <td align="right">54</td>
-<td align="right">5.1</td>
+<td align="right">52</td>
+<td align="right">5.055556</td>
 </tr>
 <tr class="odd">
 <td align="left">Patients with Disease Control by RECIST</td>
 <td align="right">223</td>
 <td align="right">44</td>
-<td align="right">5.1</td>
+<td align="right">43</td>
+<td align="right">5.068182</td>
 </tr>
 <tr class="even">
 <td align="left">Patients with Best response SD by RECIST</td>
 <td align="right">222</td>
 <td align="right">44</td>
-<td align="right">5.0</td>
+<td align="right">43</td>
+<td align="right">5.045454</td>
 </tr>
 <tr class="odd">
 <td align="left">Patients with Best response PD by RECIST</td>
 <td align="right">170</td>
 <td align="right">36</td>
-<td align="right">4.7</td>
+<td align="right">35</td>
+<td align="right">4.722222</td>
 </tr>
 <tr class="even">
 <td align="left">Patients with Best response PR by RECIST</td>
 <td align="right">170</td>
 <td align="right">34</td>
-<td align="right">5.0</td>
+<td align="right">33</td>
+<td align="right">5.000000</td>
 </tr>
 </tbody>
 </table>
-<p>Overwhelmingly the most commonly reported outcome measure by dose is incidence of DLT. 131 studies report this outcome, with an average of 4.9 doses per series. Efficacy outcomes are reported far less frequently. Objective response as measured by RECIST <span class="citation">(Eisenhauer et al. 2009)</span> is reported in 54 studies.</p>
+<p>Overwhelmingly the most commonly reported outcome measure by dose is incidence of DLT. 131 studies from 107 manuscripts report this outcome, with an average of 4.9 doses per series. Efficacy outcomes are reported far less frequently. Objective response as measured by RECIST <span class="citation">(Eisenhauer et al. 2009)</span> is reported in 54 studies.</p>
+</div>
+<div id="analysis-series" class="section level3">
+<h3>Analysis series</h3>
+<p>An analysis series constitutes a set of doses that can be unambiguously ordered from lowest to highest, with outcomes and the number of exposed patients reported at each dose. Some studies report dose-level data that are not unambiguous in their order. E.g. it is impossible to say whether <em>10mg A + 10mg B</em> is greater than or less than <em>20mg A + 5mg B</em>. The outcomes from studies were split into so called <em>analysis series</em>, subsets of data where the doses can be unambiguously ordered. This results in potentially many analysis series per study. For convenience, the analysis series are grouped for DLT outcomes (in object <code>dlt</code>), RECIST objective response (in object <code>recist_obj_resp</code>), and any objective response including RECIST-analogues in haematological studies like the Cheson crieteria (in object <code>obj_resp</code>) by the <code>Load.R</code> script.</p>
+<pre class="r"><code>dlt %&gt;% 
+  group_by(AnalysisSeriesId) %&gt;% 
+  summarise(NumDoses = n()) %&gt;% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %&gt;% 
+  head %&gt;% knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">NumSeries</th>
+<th align="right">ObsPerSeries</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">155</td>
+<td align="right">4.148387</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>dlt %&gt;% 
+  left_join(studies, by = 'Study') %&gt;% 
+  left_join(manuscripts, by = 'Manuscript') %&gt;% 
+  group_by(Source, AnalysisSeriesId) %&gt;% 
+  summarise(NumDoses = n()) %&gt;% 
+  group_by(Source) %&gt;% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %&gt;% 
+  head %&gt;% knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Source</th>
+<th align="right">NumSeries</th>
+<th align="right">ObsPerSeries</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">ChiuzanModelBased</td>
+<td align="right">116</td>
+<td align="right">4.146552</td>
+</tr>
+<tr class="even">
+<td align="left">ChiuzanRuleBased1</td>
+<td align="right">39</td>
+<td align="right">4.153846</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>obj_resp %&gt;% 
+  group_by(AnalysisSeriesId) %&gt;% 
+  summarise(NumDoses = n()) %&gt;% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %&gt;% 
+  head %&gt;% knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">NumSeries</th>
+<th align="right">ObsPerSeries</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">93</td>
+<td align="right">4.021505</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>obj_resp %&gt;% 
+  left_join(studies, by = 'Study') %&gt;% 
+  left_join(manuscripts, by = 'Manuscript') %&gt;% 
+  group_by(Source, AnalysisSeriesId) %&gt;% 
+  summarise(NumDoses = n()) %&gt;% 
+  group_by(Source) %&gt;% 
+  summarise(NumSeries = n(), ObsPerSeries = mean(NumDoses)) %&gt;% 
+  head %&gt;% knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Source</th>
+<th align="right">NumSeries</th>
+<th align="right">ObsPerSeries</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">ChiuzanModelBased</td>
+<td align="right">56</td>
+<td align="right">3.928571</td>
+</tr>
+<tr class="even">
+<td align="left">ChiuzanRuleBased1</td>
+<td align="right">37</td>
+<td align="right">4.162162</td>
+</tr>
+</tbody>
+</table>
+</div>
 <div id="availability-of-data" class="section level2">
 <h2>Availability of data</h2>
 <p>The dataset is available at:</p>
@@ -471,6 +605,7 @@ binary_events &lt;- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
 <blockquote>
 <p>Kristian Brock, Victoria Homer, Gurjinder Soul, Claire Potter, Cody Chiuzan and Shing Lee “Dose-level toxicity and efficacy outcomes from dose-finding clinical trials in oncology”. 2019. doi: 10.25500/edata.bham.00000337</p>
 </blockquote>
+<p>or use the BibTex entry</p>
 <pre><code>@misc{BrockDoseFindingData,
     author = {Kristian Brock and Victoria Homer and Gurjinder Soul and Claire Potter and Cody Chiuzan and Shing Lee},
     year = {2019},
@@ -526,7 +661,8 @@ binary_events &lt;- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
 <li><code>Unknown</code>, where not specified.</li>
 </ul></li>
 <li><code>Treatment</code>, <code>string</code>: brief description of all treatments given, whether dose-varying or not.</li>
-<li><code>ContainsChemo</code>, <code>bool</code>: <code>TRUE</code> if the treatment contains a chemotherapy element. This is provided to address the reasonable expectation that the presence of chemotherapy increases the expectation of toxicity. A full decomposition of treatment types is not provided here (e.g. there is no ContainsInhibitor field) but standardised types of the dose-varying treatment(s) are given in the column DoseVaryingTreatmentType. A special case is made here for chemo to allow an analysis to reflect the reasonably-expected population-level effect that chemotherapy is associated with toxicity.</li>
+<li><code>ContainsChemo</code>, <code>bit</code>: <code>1</code> if the treatment contains any chemotherapy element, fixed-dose or dose-varying. A full decomposition of treatment types is not provided here (e.g. there is no ContainsInhibitor field) but standardised types of the dose-varying treatment(s) are given in the column DoseVaryingTreatmentType.</li>
+<li><code>FixedDoseChemo</code>, <code>bit</code>: <code>1</code> if the treatment contains a fixed-dose chemotherapy component; <code>0</code> if there is no fixed-dose chemo element. Note if chemotherapy is included only as part of the investigative treatment and thus has its dose varied, this field will be <code>0</code>. This field is provided to address the reasonable expectation that the presence of a standard chemotherapy backbone increases the expectation of toxicity. A special case is made here for chemo to allow an analysis to reflect the reasonably-expected population-level effect that chemotherapy is associated with greater toxicity (and perhaps also response).</li>
 <li><code>DoseVaryingTreatment</code>, <code>string</code>: the treatment(s) that have their dose varied. In the case of many treatments, items are separated by the + symbol. Any treatment identified in Treatment but not in DoseVaryingTreatment can be assumed to be constant across the doses under investigation.</li>
 <li><code>DoseVaryingTreatmentType</code>, <code>string</code>: type of the treatment(s) undergoing dose variation. Options are:
 <ul>
@@ -553,7 +689,7 @@ binary_events &lt;- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
 <li><code>AdverseEventLevelCounts</code>, <code>bool</code>: <code>TRUE</code> if adverse events were tabulated by dose for specific events (e.g. Anaemia) in contrast to the broad level (e.g. Grade 3/4 AE).</li>
 </ul>
 </div>
-<div id="outcomes" class="section level3">
+<div id="outcomes-1" class="section level3">
 <h3>Outcomes</h3>
 <p>This tab details the outcome measures collected from the manuscripts.</p>
 <p>Columns:</p>
