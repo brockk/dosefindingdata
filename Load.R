@@ -1,18 +1,23 @@
 
 library(readxl)
+library(httr)
 library(dplyr)
 library(stringr)
 
-# Download the Database file from:
-# http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx
-# and save it in a convenient place:
-file_path = '~/ownCloud/Research/Phase1Outcomes/Database.xlsx'
+# The file is available to download  from:
+# http://edata.bham.ac.uk/337/
 
-manuscripts <- read_excel(file_path, sheet = 'Manuscripts')
-studies <- read_excel(file_path, sheet = 'Studies')
-outcomes <- read_excel(file_path, sheet = 'Outcomes')
-binary_events <- read_excel(file_path, sheet = 'BinaryOutcomeEvents')
-binary_series <- read_excel(file_path, sheet = 'BinaryOutcomeAnalysisSeries')
+# Download from URL:
+data_url <- 'http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx'
+GET(data_url, write_disk(tf <- tempfile(fileext = ".xlsx")))
+df <- read_xlsx(tf)
+
+# And load datasets:
+manuscripts <- read_excel(tf, sheet = 'Manuscripts')
+studies <- read_excel(tf, sheet = 'Studies')
+outcomes <- read_excel(tf, sheet = 'Outcomes')
+binary_events <- read_excel(tf, sheet = 'BinaryOutcomeEvents')
+binary_series <- read_excel(tf, sheet = 'BinaryOutcomeAnalysisSeries')
 
 
 # OutcomeId of useful outcomes ----
@@ -47,7 +52,8 @@ binary_series %>%
   mutate(DoseLevel = Order - MidDose) %>% 
   filter(OutcomeId == dlt_outcome_id) %>% 
   arrange(AnalysisSeriesId, Order) %>% 
-  select(Study, AnalysisSeriesId, Dose, DoseLevel, n, Events) %>% 
+  rename(DoseLevelN = Order) %>% 
+  select(Study, AnalysisSeriesId, Dose, DoseLevelN, DoseLevel, n, Events) %>% 
   mutate(ProbEvent = Events / n) -> dlt
 
 # RECIST response is the most common efficacy outcome
@@ -62,7 +68,8 @@ binary_series %>%
   mutate(DoseLevel = Order - MidDose) %>% 
   filter(OutcomeId == recist_or_outcome_id) %>% 
   arrange(AnalysisSeriesId, Order) %>% 
-  select(Study, AnalysisSeriesId, Dose, DoseLevel, n, Events) %>% 
+  rename(DoseLevelN = Order) %>% 
+  select(Study, AnalysisSeriesId, Dose, DoseLevelN, DoseLevel, n, Events) %>% 
   mutate(ProbEvent = Events / n) -> recist_obj_resp
 
 # Objective response
@@ -77,5 +84,6 @@ binary_series %>%
   mutate(DoseLevel = Order - MidDose) %>% 
   filter(OutcomeId %in% obj_response_outcome_ids) %>% 
   arrange(AnalysisSeriesId, Order) %>% 
-  select(Study, AnalysisSeriesId, Dose, DoseLevel, n, Events) %>% 
+  rename(DoseLevelN = Order) %>% 
+  select(Study, AnalysisSeriesId, Dose, DoseLevelN, DoseLevel, n, Events) %>% 
   mutate(ProbEvent = Events / n) -> obj_resp
