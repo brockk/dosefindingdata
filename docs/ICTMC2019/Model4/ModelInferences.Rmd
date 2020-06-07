@@ -1,0 +1,44 @@
+---
+title: "Run DLT and objective-response models"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+Note: this notebook assumes that `RunModels.Rmd` has run and that the `` and `` objects are available.
+
+
+# Fitted series
+
+## By DoseVaryingTreatmentType
+```{r, fig.width=10}
+fitted_emax_dlt_series %>% 
+  filter(DoseVaryingTreatmentType %in% c('Chemotherapy', 
+                                         'Radiotherapy', 
+                                         'Monoclonal Antibody', 
+                                         'Inhibitor')) %>% 
+  ggplot(aes(x = DoseLevel, y = prob_event, group = AnalysisSeriesId, 
+             col = DoseVaryingTreatmentType)) + 
+  geom_line(size = 1) + 
+  facet_wrap(~ DoseVaryingTreatmentType, ncol = 2) + 
+  xlim(-5, 5) +
+  labs(title = 'Fitted dose-DLT curves', col = 'Drug type', y = 'Prob(DLT)') + 
+  theme(legend.position = 'none')
+```
+
+```{r, fig.width=10}
+fitted_emax_obj_resp_series %>% 
+  filter(DoseVaryingTreatmentType %in% c('Chemotherapy', 
+                                         'Radiotherapy', 
+                                         'Monoclonal Antibody', 
+                                         'Inhibitor')) %>% 
+  ggplot(aes(x = DoseLevel, y = prob_event, group = AnalysisSeriesId, 
+             col = DoseVaryingTreatmentType)) + 
+  geom_line(size = 1) + 
+  facet_wrap(~ DoseVaryingTreatmentType, ncol = 2) + 
+  xlim(-5, 5) +
+  labs(title = 'Fitted dose-response curves', col = 'Drug type', 
+       y = 'Prob(ObjectiveResponse)') + 
+  theme(legend.position = 'none')
+```
+

@@ -1,0 +1,122 @@
+---
+title: "Checks on the Bayesian Hierarchical Models"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+```{r}
+# This script in the root of the project loads the datasets
+source('../../../Load.R')
+
+library(brms)
+library(ggplot2)
+```
+
+
+## DLT Model
+```{r}
+dlt_mod <- readRDS('dlt_mod.rds')
+```
+
+```{r}
+dlt_mod
+```
+
+Rhats and Eff.Samples look fine. 
+No divergent transitions or violations of max tree-depth are reported.
+
+```{r}
+pp_check(dlt_mod)
+```
+
+The x-axis is the sampled number of DLTs, conditional on the number of attempts, using all of the DLT series. 
+Posterior samples are a faithful representation of the observed data.
+
+Distribution of series-level intercepts:
+```{r}
+qplot(ranef(dlt_mod)$AnalysisSeriesId[, , 'Intercept'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+Normal enough.
+
+Distribution of series-level gradients for DoseLevel:
+```{r}
+qplot(ranef(dlt_mod)$AnalysisSeriesId[, , 'DoseLevel'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+Bit of a negative skew but not alarmingly non-normal.
+
+Distribution of series-level intercepts:
+```{r}
+qplot(ranef(dlt_mod)$DoseVaryingTreatmentType[, , 'Intercept'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+There are not many of these but the fit to normal is not persuasive.
+
+Distribution of series-level gradients for DoseLevel:
+```{r}
+qplot(ranef(dlt_mod)$DoseVaryingTreatmentType[, , 'DoseLevel'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+There are not many of these but the fit to normal is not persuasive.
+
+
+## Objective Response Model
+```{r}
+obj_resp_mod <- readRDS('obj_resp_mod.rds')
+```
+
+```{r}
+obj_resp_mod
+```
+
+Rhats and Eff.Samples look fine. 
+No divergent transitions or violations of max tree-depth are reported.
+
+```{r}
+pp_check(obj_resp_mod)
+```
+
+The x-axis is the sampled number of responses, conditional on the number of attempts, using all of the response series. 
+Posterior samples are a faithful representation of the observed data.
+
+Distribution of series-level intercepts:
+```{r}
+qplot(ranef(obj_resp_mod)$AnalysisSeriesId[, , 'Intercept'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+Kinda normal.
+
+Distribution of series-level gradients for DoseLevel:
+```{r}
+qplot(ranef(obj_resp_mod)$AnalysisSeriesId[, , 'DoseLevel'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+Long tails but not alarmingly non-normal.
+
+Distribution of series-level intercepts:
+```{r}
+qplot(ranef(obj_resp_mod)$DoseVaryingTreatmentType[, , 'Intercept'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+There are not many of these.
+There appears to be some central tendency albeit with long negative tail.
+
+Distribution of series-level gradients for DoseLevel:
+```{r}
+qplot(ranef(obj_resp_mod)$DoseVaryingTreatmentType[, , 'DoseLevel'][,'Estimate'], 
+      geom = 'histogram')
+```
+
+There are not many of these.
+There appears to be some central tendency and symmetry.
+Normal is not a poor working model.
+

@@ -1,0 +1,72 @@
+---
+title: "Make derived datasets"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+```{r}
+# This script in the root of the project loads the datasets
+source('../../../Load.R')
+
+library(brms)
+library(tidybayes)
+
+# Load DLT model
+dlt_mod <- readRDS('dlt_mod.rds')
+
+# Load objective response model
+obj_resp_mod <- readRDS('obj_resp_mod.rds')
+```
+
+
+## DLT
+Extract posterior samples from Bayesian model:
+```{r}
+dlt %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>%  
+  filter(!is.na(ContainsChemo)) %>% 
+  add_fitted_draws(dlt_mod) %>% 
+  mutate(EstProbEvent = .value / n) -> dlt_fitted_draws
+```
+
+Output:
+```{r}
+saveRDS(dlt_fitted_draws, 'dlt_fitted_draws.rds')
+```
+
+Posterior expected event rate at each dose:
+```{r}
+dlt_fitted_draws %>% 
+  group_by(AnalysisSeriesId, DoseLevel) %>% 
+  summarise(EstProbEvent = mean(EstProbEvent)) -> dlt_expected_rates
+
+saveRDS(dlt_expected_rates, 'dlt_expected_rates.rds')
+```
+
+## Objective Response
+Extract posterior samples from Bayesian model:
+```{r}
+obj_resp %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>%  
+  filter(!is.na(ContainsChemo)) %>% 
+  filter(n > 0) %>% 
+  add_fitted_draws(obj_resp_mod) %>% 
+  mutate(EstProbEvent = .value / n) -> obj_resp_fitted_draws
+```
+
+Output:
+```{r}
+saveRDS(obj_resp_fitted_draws, 'obj_resp_fitted_draws.rds')
+```
+
+Posterior expected event rate at each dose:
+```{r}
+obj_resp_fitted_draws %>% 
+  group_by(AnalysisSeriesId, DoseLevel) %>% 
+  summarise(EstProbEvent = mean(EstProbEvent)) -> obj_resp_expected_rates
+
+saveRDS(obj_resp_expected_rates, 'obj_resp_expected_rates.rds')
+```

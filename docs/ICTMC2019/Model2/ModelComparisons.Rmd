@@ -1,0 +1,30 @@
+---
+title: "Model Comparisons"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+```{r}
+# # This script in the root of the project loads the datasets
+# source('../../../Load.R')
+
+library(brms)
+library(loo)
+
+# Load DLT models
+dlt_mod1 <- readRDS('../Model1/dlt_mod.rds')
+dlt_mod2 <- readRDS('dlt_mod.rds')
+
+
+# Load objective response model
+obj_resp_mod1 <- readRDS('../Model1/obj_resp_mod.rds')
+obj_resp_mod2 <- readRDS('obj_resp_mod.rds')
+```
+
+```{r}
+loo_compare(loo(dlt_mod1), loo(dlt_mod2))
+```
+
+Oh drat. 
+Models need same dataset to compare via loo and one of there are modest differences: one series has unknown ContainsChemo value.

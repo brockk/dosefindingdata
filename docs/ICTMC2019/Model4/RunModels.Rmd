@@ -1,0 +1,509 @@
+---
+title: "Run DLT and objective-response models"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+This is done in a workbook to take advantage of the automatic setting of working directory.
+
+```{r}
+# This script in the root of the project loads the datasets
+source('../../../Load.R')
+
+library(rstanemax)
+library(brms)
+library(ggplot2)
+library(patchwork)
+
+emax <- function(d, E0, EMax, ED50, lambda) {
+  E0 + (EMax * d^lambda) / (ED50 + d^lambda)
+}
+
+fit_emax_dlt <- function(analysis_series_id, ...) {
+  dlt %>% 
+    filter(AnalysisSeriesId == analysis_series_id) %>% 
+    mutate(
+      ProbEvent = ifelse(ProbEvent == 0, ProbEvent + 0.001, ProbEvent),
+      ProbEvent = ifelse(ProbEvent == 1, ProbEvent - 0.001, ProbEvent),
+      DoseLevelN = 1:nrow(.),
+      LogOddsEvent = logit_scaled(ProbEvent)
+    ) -> model_dat
+  
+  fit <- stan_emax(LogOddsEvent ~ DoseLevelN, gamma.fix = NULL, 
+                   data = model_dat, 
+                   priors = list(gamma = c(0, 1)),  # Default is N(0, 3)
+                   control = list(adapt_delta = 0.999), iter = 5000, ...)
+  
+  list(data = model_dat, fit = fit)
+}
+
+fit_emax_obj_resp <- function(analysis_series_id, ...) {
+  obj_resp %>% 
+    filter(AnalysisSeriesId == analysis_series_id) %>% 
+    mutate(
+      ProbEvent = ifelse(ProbEvent == 0, ProbEvent + 0.001, ProbEvent),
+      ProbEvent = ifelse(ProbEvent == 1, ProbEvent - 0.001, ProbEvent),
+      DoseLevelN = 1:nrow(.),
+      LogOddsEvent = logit_scaled(ProbEvent)
+    ) -> model_dat
+  
+  fit <- stan_emax(LogOddsEvent ~ DoseLevelN, gamma.fix = NULL, 
+                   data = model_dat, 
+                   priors = list(gamma = c(0, 1)),  # Default is N(0, 3)
+                   control = list(adapt_delta = 0.999), iter = 5000, ...)
+  
+  list(data = model_dat, fit = fit)
+}
+
+get_dlt_label <- function(series_id) {
+  dlt %>% 
+    left_join(studies, by = 'Study') %>% 
+    filter(AnalysisSeriesId == series_id) %>% 
+    select(Study, DoseVaryingTreatment, DoseVaryingTreatmentType, 
+           PatientGroup) %>% 
+    mutate(Label = paste0(DoseVaryingTreatment, ' (', 
+                          DoseVaryingTreatmentType, ') in ', 
+                          stringr::str_to_title(PatientGroup), ' [',
+                          Study, ']'
+    )) %>% 
+    select(Label) %>% distinct() %>% .[[1]] -> label
+  
+  label
+}
+
+get_obj_resp_label <- function(series_id) {
+  obj_resp %>% 
+    left_join(studies, by = 'Study') %>% 
+    filter(AnalysisSeriesId == series_id) %>% 
+    select(Study, DoseVaryingTreatment, DoseVaryingTreatmentType, 
+           PatientGroup) %>% 
+    mutate(Label = paste0(DoseVaryingTreatment, ' (', 
+                          DoseVaryingTreatmentType, ') in ', 
+                          stringr::str_to_title(PatientGroup), ' [',
+                          Study, ']'
+    )) %>% 
+    select(Label) %>% distinct() %>% .[[1]] -> label
+  
+  label
+}
+
+plot_lines <- function(x, use_rows = 1000) {
+  preds <-  posterior_predict(x$fit, returnType = "tibble")
+
+  preds %>% 
+    head(use_rows) %>% 
+    mutate(logodds_event = emax(exposure, E0 = e0, EMax = emax, ED50 = ec50, 
+                                lambda = gamma),
+           prob_event = inv_logit_scaled(logodds_event)) %>% 
+    ggplot(aes(x = exposure, y = prob_event)) +
+    geom_line(aes(group = mcmcid), alpha = 0.1, col=  'darkgreen') + 
+    ylim(0, 1) + 
+    labs(x = 'Dose-level', y = '') + 
+    geom_point(data = x$data, aes(x = DoseLevelN, y = ProbEvent, 
+                                     size = n), col = 'black')
+}
+
+plot_mean <- function(x) {
+  preds <-  posterior_predict(x$fit, returnType = "tibble")
+
+  preds %>% 
+    mutate(logodds_event = emax(exposure, E0 = e0, EMax = emax, ED50 = ec50, 
+                                lambda = gamma),
+           prob_event = inv_logit_scaled(logodds_event)) %>% 
+    group_by(exposure) %>% 
+    summarise(prob_event = mean(prob_event)) %>% 
+    ggplot(aes(x = exposure, y = prob_event)) +
+    geom_line(col=  'darkgreen') + 
+    ylim(0, 1) + 
+    labs(x = 'Dose-level', y = '') + 
+    geom_point(data = x$data, aes(x = DoseLevelN, y = ProbEvent, 
+                                     size = n), col = 'black')
+}
+```
+
+
+# DLT
+```{r}
+set.seed(68764521)
+
+dlt_models <- list()
+analysis_series_ids <- dlt %>% 
+  distinct(AnalysisSeriesId) %>% .[[1]]
+
+for(analysis_series_id in analysis_series_ids) {
+  
+  print(analysis_series_id)
+  mod <- fit_emax_dlt(analysis_series_id, refresh = 0)
+  dlt_models[[as.character(analysis_series_id)]] <- mod
+}
+
+length(dlt_models)
+```
+
+```{r}
+format(object.size(dlt_models), units = 'MB')
+```
+
+```{r}
+library(purrr)
+```
+
+Convert from list to tibble for simpler analysis.
+```{r}
+tibble(
+  data = dlt_models %>% map('data'),
+  fit = dlt_models %>% map('fit')
+) -> dlt_series_summary
+
+dlt_series_summary %>% 
+  mutate(
+    Study = data %>% map_chr(function(x) x %>% 
+                               distinct(Study) %>% 
+                               .[[1]]),
+    AnalysisSeriesId = data %>% map_dbl(function(x) x %>% 
+                                          distinct(AnalysisSeriesId) %>% 
+                                          .[[1]]),
+    Events = data %>% map_dbl(function(x) x %>%
+                                summarise(sum(Events)) %>%
+                                .[[1]]),
+    NPostSamples = fit %>% map_int(function(x) x$stanfit %>%
+                                     as.data.frame %>%
+                                     nrow)
+  ) -> dlt_series_summary
+
+dlt_series_summary %>% 
+  select(-data, -fit) %>% 
+  head
+```
+
+```{r, rows.print = 100}
+dlt_series_summary %>% 
+  select(-data, -fit) %>% 
+  filter(NPostSamples == 0)
+```
+
+Series 91 failed despite 7 events.
+Series 597 failed despite 6 events.
+Otherwise, fitting only fails when Events == 0.
+
+Did fitting ever succeed when Events == 0?
+```{r}
+dlt_series_summary %>% 
+  select(-data, -fit) %>% 
+  filter(Events == 0 & NPostSamples > 0)
+```
+Of course not!
+
+```{r}
+format(object.size(dlt_series_summary), units = 'MB')
+```
+Storing expensive objects in two places now.
+Just be mindful of memory. 
+
+Take a look at some:
+```{r, fig.width=10}
+id <- '3'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '6'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '21'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '32'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '39'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '86'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r}
+dlt %>% filter(Study == 'Sharma2013_1')
+```
+
+```{r, fig.width=10}
+id <- '100'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r}
+dlt %>% filter(Study == 'Sharma2013_2')
+```
+
+```{r, fig.width=10}
+id <- '105'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r}
+dlt_series_summary %>% filter(Study == 'Saji2008_1')
+```
+
+```{r, fig.width=10}
+id <- '325'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+```{r}
+dlt_series_summary %>% filter(Study == 'Kim2009_1')
+```
+
+```{r, fig.width=10}
+id <- '496'
+label <- get_dlt_label(id)
+p1 <- plot_lines(dlt_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(dlt_models[[id]])
+p1 + p2
+```
+
+# Obj Resp
+```{r}
+set.seed(68764521)
+
+obj_resp_models <- list()
+analysis_series_ids <- obj_resp %>% 
+  distinct(AnalysisSeriesId) %>% .[[1]]
+
+for(analysis_series_id in analysis_series_ids) {
+  
+  print(analysis_series_id)
+  mod <- fit_emax_obj_resp(analysis_series_id, refresh = 0)
+  obj_resp_models[[as.character(analysis_series_id)]] <- mod
+}
+
+length(obj_resp_models)
+```
+
+```{r}
+format(object.size(obj_resp_models), units = 'MB')
+```
+
+```{r}
+tibble(
+  data = obj_resp_models %>% map('data'),
+  fit = obj_resp_models %>% map('fit')
+) -> obj_resp_series_summary
+
+obj_resp_series_summary %>% 
+  mutate(
+    Study = data %>% map_chr(function(x) x %>% 
+                               distinct(Study) %>% 
+                               .[[1]]),
+    AnalysisSeriesId = data %>% map_dbl(function(x) x %>% 
+                                          distinct(AnalysisSeriesId) %>% 
+                                          .[[1]]),
+    Events = data %>% map_dbl(function(x) x %>%
+                                summarise(sum(Events)) %>%
+                                .[[1]]),
+    NPostSamples = fit %>% map_int(function(x) x$stanfit %>%
+                                     as.data.frame %>%
+                                     nrow)
+  ) -> obj_resp_series_summary
+
+obj_resp_series_summary %>% 
+  select(-data, -fit) %>% 
+  head
+```
+
+```{r, rows.print = 100}
+obj_resp_series_summary %>% 
+  select(-data, -fit) %>% 
+  filter(NPostSamples == 0)
+```
+
+Series 98 failed despite 4 events.
+Series 157 failed despite 19 events.
+Otherwise, fitting only fails when Events == 0.
+
+Did fitting ever succeed when Events == 0?
+```{r}
+obj_resp_series_summary %>% 
+  select(-data, -fit) %>% 
+  filter(Events == 0 & NPostSamples > 0)
+```
+Of course not!
+
+Take a look at some:
+
+```{r}
+obj_resp_series_summary %>% 
+  select(-data, -fit) %>% 
+  filter(NPostSamples > 0) %>% head
+```
+
+```{r, fig.width=10}
+id <- '28'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '37'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '46'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '59'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '66'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+```{r, fig.width=10}
+id <- '75'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+```{r}
+obj_resp_series_summary %>% filter(Study == 'Saji2008_1')
+```
+
+```{r, fig.width=10}
+id <- '326'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+```{r}
+obj_resp_series_summary %>% filter(Study == 'Kim2009_1')
+```
+
+```{r, fig.width=10}
+id <- '501'
+label <- get_obj_resp_label(id)
+p1 <- plot_lines(obj_resp_models[[id]], use_rows = 1000) + 
+  labs(title = label)
+p2 <- plot_mean(obj_resp_models[[id]])
+p1 + p2
+```
+
+
+# Fitted Series
+```{r}
+library(tidyr)
+
+seed <- 98592
+
+set.seed(seed)
+dlt_series_summary %>% 
+  filter(NPostSamples > 0) %>% 
+  mutate(preds = fit %>% map(posterior_predict, returnType = "tibble")) %>% 
+  select(-data, -fit) %>% 
+  unnest() %>% 
+  mutate(logodds_event = emax(exposure, E0 = e0, EMax = emax, ED50 = ec50, 
+                              lambda = gamma),
+         prob_event = inv_logit_scaled(logodds_event)) %>% 
+  rename(DoseLevelN = exposure) %>% 
+  group_by(Study, AnalysisSeriesId, DoseLevelN) %>% 
+  summarise(prob_event = mean(prob_event)) %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
+  left_join(dlt, by = c('AnalysisSeriesId' = 'AnalysisSeriesId', 
+                        'DoseLevelN' = 'DoseLevelN')) -> fitted_emax_dlt_series
+
+
+set.seed(seed)
+obj_resp_series_summary %>% 
+  filter(NPostSamples > 0) %>% 
+  mutate(preds = fit %>% map(posterior_predict, returnType = "tibble")) %>% 
+  select(-data, -fit) %>% 
+  unnest() %>% 
+  mutate(logodds_event = emax(exposure, E0 = e0, EMax = emax, ED50 = ec50, 
+                              lambda = gamma),
+         prob_event = inv_logit_scaled(logodds_event)) %>% 
+  rename(DoseLevelN = exposure) %>% 
+  group_by(Study, AnalysisSeriesId, DoseLevelN) %>% 
+  summarise(prob_event = mean(prob_event)) %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
+  left_join(obj_resp, by = c('AnalysisSeriesId' = 'AnalysisSeriesId', 
+                             'DoseLevelN' = 'DoseLevelN')) -> 
+  fitted_emax_obj_resp_series
+```
+

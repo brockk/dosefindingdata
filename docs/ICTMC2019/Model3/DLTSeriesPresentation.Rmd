@@ -1,0 +1,37 @@
+---
+title: "Model-based analyses for DLT outcomes"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  powerpoint_presentation:
+    reference_doc: my_layout.pptx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# This script in the root of the project loads the datasets
+source('../../../Load.R')
+ 
+dlt_fitted_draws <- readRDS('dlt_fitted_draws.rds')
+
+# This script loads objects specific to this modelling task.
+# It relies on dlt_fitted_draws being loaded.
+source('ModellingObjects.R')
+
+library(patchwork)
+```
+
+
+
+```{r echo = FALSE, fig.width = 8, fig.height = 4.5,  dpi=300, out.width="1920px", out.height="1080px", results='asis', warning=FALSE, message=FALSE}
+series_ids <- dlt %>% distinct(AnalysisSeriesId) %>% .[[1]]
+
+for(series_id in series_ids) {
+  
+  analysis <- analyse_dlt(series_id, alpha = alpha, add_title = FALSE)
+  
+  cat(paste("\n\n## ", analysis$label, "##\n")  )
+  print(analysis$p1 + analysis$p2)
+}
+```

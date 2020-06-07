@@ -1,0 +1,130 @@
+---
+title: "Scratch analysis"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+```{r}
+# This script in the root of the project loads the datasets
+source('../../../Load.R')
+
+dlt_fitted_draws <- readRDS('dlt_fitted_draws.rds')
+
+# This script loads objects specific to this modelling task.
+# It relies on dlt_fitted_draws being loaded.
+source('ModellingObjects.R')
+```
+
+# DLT 
+
+Num series
+```{r}
+dlt %>% count(AnalysisSeriesId) %>% nrow # 155 series
+```
+
+Select random n:
+```{r}
+dlt %>% count(AnalysisSeriesId) %>% sample_n(5)
+```
+
+## Series analysis
+
+Series of interest are:
+
+* 'Atzori2011_1'
+* 'Sessa2013_1'
+* 'Smith2011_1'
+* 'Borghaei2009_1'
+* 'Finn2013_1'
+* 'Jones2012_1'
+* 'Farid2012_1'
+
+The bottom two have problems fitting in ML method but not in Bayes.
+
+```{r}
+dlt %>% 
+  filter(Study == 'Atzori2011_1') %>% 
+  distinct(AnalysisSeriesId) %>% 
+  head(1) %>% .[[1]] -> series_id
+
+series_id
+```
+
+#### Raw data
+```{r}
+dlt %>% filter(AnalysisSeriesId == series_id)
+```
+
+#### GLM model
+```{r}
+dlt %>% filter(AnalysisSeriesId == series_id) %>% 
+  glm(ProbEvent ~ DoseLevel, data = ., weights = n, 
+      family = binomial('logit'))
+```
+
+#### Analysis (with title)
+```{r}
+dlt_analysis <- analyse_dlt(
+  series_id = dlt %>% filter(Study == 'Atzori2011_1') %>% 
+    distinct(AnalysisSeriesId) %>% head(1) %>% .[[1]], 
+  alpha = alpha, add_title = TRUE)
+```
+
+```{r}
+library(patchwork)
+dlt_analysis$p1 + dlt_analysis$p2
+```
+
+
+CI comparison between partially-pooled and non-pooled analyses:
+```{r}
+library(tidyr)
+dlt_analysis$ci_inferences %>% 
+  select(Method, .ci.width.l, DoseLevel) %>% 
+  spread(Method, .ci.width.l) %>% 
+  mutate(
+    ReductionInCI = PartiallyPooled / NonPooled - 1,
+    EffectiveNMultipler = (NonPooled / PartiallyPooled)^2
+  ) %>% print(n = 100)
+```
+
+
+
+# Next steps:
+
+Batch, convey drug-types as colours
+
+
+
+Talk plan:
+
+1) Plot the points
+2) Add the smooth plus SE 
+3) Add conjectured inverted line
+4) Or slightly weird wavey line
+5) Or  datasaurus line
+6) How do I know these are not the truth? Where is that information coming
+from? Because it is not coming from the trial data.
+7) Show the Bayesian posterior draw lines
+
+Show some more examples to show that the locations (means) are not shifted
+but that the uncertainties (SDs) are reduced. Consider making all 130 slides
+and asking the audience select slides. 
+
+8) Present the effective sample size increases and say why aren;t you Bayes?
+
+Propose the alternative title for this talk:
+A Bayesian re-analysis of 130 dose-finding trials, with regularisation 
+provided by partial pooling to overcome the severe limitation of perenially 
+small sample size to produce inference on the dose-event probabilities of 
+modern classes of cancer drugs.
+
+Further benefits:
+
+* Bayesian model fits all datasets.
+* Sometimes non-pooled model fails to fit:
+* E.g. series_id = 192
+* Or gives silly inference (no events, event rate has 0-1 CI)
+* E.g. series_id = 201, although this example is chemo and the CI is 
+* questionable.

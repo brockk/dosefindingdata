@@ -1,0 +1,103 @@
+---
+title: "Model-based analyses for paired DLT and Objective Response outcomes"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  powerpoint_presentation:
+    reference_doc: my_layout.pptx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# The model-based analysis comes from non-pooled logit models.
+
+# This script in the root of the project loads the datasets
+source('../../../Load.R')
+ 
+# Load objective response model and samples
+dlt_mod <- readRDS('dlt_mod.rds')
+dlt_fitted_draws <- readRDS('dlt_fitted_draws.rds')
+obj_resp_mod <- readRDS('obj_resp_mod.rds')
+obj_resp_fitted_draws <- readRDS('obj_resp_fitted_draws.rds')
+
+# This script loads objects specific to this modelling task.
+# It relies on dlt_fitted_draws being loaded.
+source('ModellingObjects.R')
+
+library(patchwork)
+
+
+pairs_plot <- function(dlt_series_id, obj_resp_series_id) { 
+  
+  dlt_analysis <- analyse_dlt(dlt_series_id, alpha = 0.05, 
+                              add_title = FALSE, legend1 = FALSE)
+  efficacy_analysis <- analyse_obj_resp(obj_resp_series_id, alpha = 0.05, 
+                                        add_title = FALSE, legend1 = TRUE, 
+                                        line_col = 'darkgreen', 
+                                        ribbon_fill = 'chartreuse')
+  
+  # rp2d <- studies %>% filter(Study == study) %>% select(MTDorRP2D) %>% .[[1]]
+  # rp2d_dlt_rows <- dlt %>% filter(Study == study & Dose == rp2d)
+  # rp2d_obj_resp_rows <- obj_resp %>% filter(Study == study & Dose == rp2d)
+  rp2d <-studies %>% 
+    left_join(dlt, by = 'Study') %>%
+    filter(AnalysisSeriesId == dlt_series_id) %>% 
+    select(MTDorRP2D) %>% 
+    head(1) %>% .[[1]]
+  rp2d_dlt_rows <- dlt %>% 
+    filter(AnalysisSeriesId == dlt_series_id & Dose == rp2d)
+  rp2d_obj_resp_rows <- obj_resp %>% 
+    filter(AnalysisSeriesId == obj_resp_series_id & Dose == rp2d)
+  
+  if(rp2d_dlt_rows %>% nrow == 1) {
+    p1 <- dlt_analysis$p1 + 
+      labs(subtitle = 'Toxicity') + 
+      geom_point(data = rp2d_dlt_rows, aes(x = DoseLevel, y = ProbEvent), 
+                 pch = 21, fill = NA, size = 15)
+  } else {
+    p1 <- dlt_analysis$p1 + 
+      labs(subtitle = 'Toxicity')
+  }
+  # p1 <- p1 + theme(text = element_text(size=20))
+  
+  if(rp2d_obj_resp_rows %>% nrow == 1) {
+    p2 <- efficacy_analysis$p1 + 
+      labs(subtitle = 'Response') + 
+      geom_point(data = rp2d_obj_resp_rows, aes(x = DoseLevel, y = ProbEvent), 
+                 pch = 21, fill = NA, size = 15)
+  } else {
+    p2 <- efficacy_analysis$p1 + 
+      labs(subtitle = 'Response')
+  }
+  # p2 <- p2 + theme(text = element_text(size=20))
+  
+  p1 + p2
+}
+```
+
+
+
+```{r echo = FALSE, fig.width = 8, fig.height = 4.5,  dpi=300, out.width="1920px", out.height="1080px", results='asis', warning=FALSE, message=FALSE}
+dlt %>% 
+  select(Study, Dose, DltAnalysisSeriesId = AnalysisSeriesId) %>% 
+  inner_join(obj_resp %>% 
+               select(Study, Dose, ObjRespAnalysisSeriesId = AnalysisSeriesId), 
+             by = c('Study' = 'Study', 'Dose' = 'Dose')) %>% 
+  group_by(DltAnalysisSeriesId, ObjRespAnalysisSeriesId) %>% 
+  summarise(n = n()) %>% 
+  filter(n > 1) -> analysis_series_pairs
+
+for(i in 1:nrow(analysis_series_pairs)) {
+# for(i in 1:5) {
+  
+  dlt_series_id <- analysis_series_pairs[i, 1, drop = TRUE]
+  obj_resp_series_id <- analysis_series_pairs[i, 2, drop = TRUE]
+  
+  p <- pairs_plot(dlt_series_id, obj_resp_series_id)
+  label <- get_dlt_series_label(dlt_series_id)
+  
+  cat(paste("\n\n## ", label, "##\n")  )
+  print(p)
+}
+```

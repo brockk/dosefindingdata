@@ -1,0 +1,463 @@
+---
+title: "Model Inferences"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+Modelling of the event rates in the observed series is presented in DLTSeriesPresentation and ObjRespSeriesPresentation.
+Inferences beyond those series-specific insights are explored here.
+
+```{r}
+# # This script in the root of the project loads the datasets
+# source('../../../Load.R')
+
+library(dplyr)
+library(brms)
+library(tidybayes)
+library(ggplot2)
+library(ggridges)
+
+# Load DLT model and samples
+dlt_mod <- readRDS('dlt_mod.rds')
+dlt_fitted_draws <- readRDS('dlt_fitted_draws.rds')
+
+# Load objective response model and samples
+obj_resp_mod <- readRDS('obj_resp_mod.rds')
+obj_resp_fitted_draws <- readRDS('obj_resp_fitted_draws.rds')
+```
+
+## DLT Model
+
+
+### Fitted series
+
+```{r, warning=FALSE, dpi=500}
+dlt %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
+  filter(DoseVaryingTreatmentType %in% c('Chemotherapy', 
+                                         'Radiotherapy', 
+                                         'Monoclonal Antibody', 
+                                         'Inhibitor')) %>% 
+  add_fitted_draws(dlt_mod) %>%
+  mutate(EstProbEvent = .value / n) %>% 
+  summarise(EstProbEvent = mean(EstProbEvent)) %>% 
+  ggplot(aes(x = DoseLevel, y = EstProbEvent, group = AnalysisSeriesId, 
+             col = DoseVaryingTreatmentType)) + 
+  geom_line(size = 1) + 
+  facet_wrap(~ DoseVaryingTreatmentType, ncol = 2) + 
+  xlim(-5, 5) +
+  labs(title = 'Fitted dose-DLT curves', col = 'Drug type', y = 'Prob(DLT)') + 
+  theme(legend.position = 'none')
+```
+
+### Parameters
+Intercept
+```{r}
+dlt_mod %>% 
+  spread_draws(b_Intercept) %>% 
+  ggplot(aes(x = b_Intercept)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT') + 
+  theme(legend.position = 'none')
+```
+
+DoseLevel
+```{r}
+dlt_mod %>% 
+  spread_draws(b_DoseLevel) %>% 
+  ggplot(aes(x = b_DoseLevel)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT per dose-level') + 
+  theme(legend.position = 'none')
+```
+
+Effect of ContainsChemo
+```{r}
+dlt_mod %>% 
+  spread_draws(b_FixedDoseChemo) %>% 
+  ggplot(aes(x = b_FixedDoseChemo)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT') +
+  theme(legend.position = 'none')
+```
+
+Effect of ChiuzanRuleBased1
+```{r}
+dlt_mod %>% 
+  spread_draws(b_SourceChiuzanRuleBased1) %>% 
+  ggplot(aes(x = b_SourceChiuzanRuleBased1)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT') +
+  theme(legend.position = 'none')
+```
+
+Effect of HaemNonhaemHaematological
+```{r}
+dlt_mod %>% 
+  spread_draws(b_HaemNonhaemHaematological) %>% 
+  ggplot(aes(x = b_HaemNonhaemHaematological)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT') +
+  theme(legend.position = 'none')
+```
+
+Effect of HaemNonhaemNonHaematological
+```{r}
+dlt_mod %>% 
+  spread_draws(b_HaemNonhaemNonHaematological) %>% 
+  ggplot(aes(x = b_HaemNonhaemNonHaematological)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT') +
+  theme(legend.position = 'none')
+```
+
+DoseLevel & ChiuzanRuleBased1
+```{r}
+dlt_mod %>% 
+  spread_draws(`b_DoseLevel:SourceChiuzanRuleBased1`) %>% 
+  ggplot(aes(x = `b_DoseLevel:SourceChiuzanRuleBased1`)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT per dose-level') + 
+  theme(legend.position = 'none')
+```
+
+DoseLevel & DoseLevel:HaemNonhaemHaematological
+```{r}
+dlt_mod %>% 
+  spread_draws(`b_DoseLevel:HaemNonhaemHaematological`) %>% 
+  ggplot(aes(x = `b_DoseLevel:HaemNonhaemHaematological`)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT per dose-level') + 
+  theme(legend.position = 'none')
+```
+
+DoseLevel & DoseLevel:HaemNonhaemNonHaematological
+```{r}
+dlt_mod %>% 
+  spread_draws(`b_DoseLevel:HaemNonhaemNonHaematological`) %>% 
+  ggplot(aes(x = `b_DoseLevel:HaemNonhaemNonHaematological`)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of DLT per dose-level') + 
+  theme(legend.position = 'none')
+```
+
+Adjustments to baseline DLT rate for dose-varying-treatment type
+```{r, message=FALSE, warning=FALSE}
+dlt_mod %>% 
+    spread_draws(r_DoseVaryingTreatmentType[TmtType,term]) %>%
+    filter(TmtType %in% c('Radiotherapy', 'Monoclonal.Antibody', 
+                          'Chemotherapy', 'Inhibitor')) %>% 
+    filter(term == 'Intercept') %>% 
+    rename(ParamValue = r_DoseVaryingTreatmentType) %>% 
+  mutate(TmtTypeO = factor(TmtType, levels = c('Monoclonal.Antibody',
+                                                   'Radiotherapy',
+                                                   'Inhibitor',
+                                                   'Chemotherapy'), 
+                               ordered = TRUE)) %>%
+  filter(term == 'Intercept') %>% 
+  ggplot(aes(y = TmtTypeO, group = TmtTypeO, fill = TmtTypeO, 
+             x = ParamValue)) + 
+  geom_density_ridges() + 
+  labs(x = 'Adjustment to log(odds) of DLT compared to entire dataset', 
+       y = 'Treatment type',
+       title = 'Distributions of baseline rates of DLT') +
+  theme(legend.position = 'none') + 
+  xlim(-1.75, 2.5)
+```
+
+After adjusting for the heterogeneity seen in the individual series, it appears that chemo is probably the therapy type with the greatest average risk of DLT.
+However, with inhibitors and radiotherapy, the risk of DLT is almost the same.
+The similarity in baseline rates may suggest that DLT is chosen mindful of therapy to be something that is likely to occur in a set proportion of patients.
+However, this would require admirable forecasting skills from trialists.
+Notably, incidence of DLT is less common in monoclonal antibodies.
+
+Sensitivity of event to increases in dose
+```{r}
+dlt_mod %>% 
+  spread_draws(r_DoseVaryingTreatmentType[TmtType,term]) %>%
+  filter(TmtType %in% c('Radiotherapy', 'Monoclonal.Antibody', 'Chemotherapy', 
+                        'Inhibitor')) %>% 
+  mutate(TmtTypeO = factor(TmtType, levels = c('Monoclonal.Antibody',
+                                               'Radiotherapy',
+                                               'Inhibitor',
+                                               'Chemotherapy'), 
+                           ordered = TRUE)) %>%
+  filter(term == 'DoseLevel') %>% 
+  ggplot(aes(y = TmtTypeO, group = TmtTypeO, fill = TmtTypeO, 
+             x = r_DoseVaryingTreatmentType)) + 
+  geom_density_ridges() + 
+  labs(x = 'Adjustment to gradient with respect to dose', 
+       y = 'Treatment type',
+       title = 'Distribution of sensitivity of DLT to dose increases') +
+  theme(legend.position = 'none') + 
+  xlim(-1, 1)
+```
+TODO - these need DoseLevel effect adding in now.
+With chemotherapies, inhibitors, and radiotherapy, the relationship of DLT risk with dose is concincingly positive. 
+That is, greater doses of these treatments are associated with greater risk of DLT.
+The message is rather more opaque with antibodies.
+The aggregate evidence supports a positive relationship, but the strenght of the relationship is rather weaker than the other drug classes and could plausbily be very small.
+
+
+All treatment types:
+```{r, warning=FALSE, message=FALSE}
+dlt_mod %>% 
+  spread_draws(r_DoseVaryingTreatmentType[TmtType,term]) %>%
+  filter(term == 'DoseLevel') %>% 
+  ggplot(aes(y = TmtType, group = TmtType, fill = TmtType, 
+             x = r_DoseVaryingTreatmentType)) + 
+  geom_density_ridges() + 
+  labs(x = 'Adjustment to gradient with respect to dose', 
+       y = 'Treatment type',
+       title = 'Distribution of sensitivity of DLT to dose increases') +
+  theme(legend.position = 'none') + 
+  xlim(-1.5, 2.5)
+```
+TODO: these need DoseLevel adding in now. And below
+There is more positive mass than negative mass, suggesting that the opposite must be seen in the AnalysisSeriesId-level analyses?
+
+```{r, warning=FALSE, message=FALSE, fig.height = 20, fig.width = 8}
+dlt_mod %>% 
+  spread_draws(r_AnalysisSeriesId[AnalysisSeriesId,term]) %>%
+  filter(term == 'DoseLevel') %>% 
+  ggplot(aes(y = AnalysisSeriesId, group = AnalysisSeriesId, 
+             fill = AnalysisSeriesId, x = r_AnalysisSeriesId)) + 
+  geom_density_ridges() + 
+  labs(x = 'Adjustment to gradient with respect to dose', 
+       title = 'Distribution of sensitivity of DLT to dose increases') +
+  theme(legend.position = 'none') + 
+  xlim(-1.5, 2.5)
+```
+
+Woof. How would you know?
+
+
+## Objective Response Model
+
+### Fitted series
+
+```{r, warning=FALSE, dpi=500}
+obj_resp %>% 
+  filter(n > 0) %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
+  filter(DoseVaryingTreatmentType %in% c('Chemotherapy', 
+                                         'Radiotherapy', 
+                                         'Monoclonal Antibody', 
+                                         'Inhibitor')) %>% 
+  add_fitted_draws(obj_resp_mod) %>%
+  mutate(EstProbEvent = .value / n) %>% 
+  summarise(EstProbEvent = mean(EstProbEvent)) %>% 
+  ggplot(aes(x = DoseLevel, y = EstProbEvent, group = AnalysisSeriesId, 
+             col = DoseVaryingTreatmentType)) + 
+  geom_line(size = 1) + 
+  facet_wrap(~ DoseVaryingTreatmentType, ncol = 2) + 
+  xlim(-5, 5) +
+  labs(title = 'Fitted dose-response curves', col = 'Drug type', 
+       y = 'Prob(ObjectiveResponse)') + 
+  theme(legend.position = 'none')
+```
+
+Some series have seen no response at all. 
+These could be medically inert molecules.
+Label the series:
+
+```{r}
+obj_resp %>% count(AnalysisSeriesId) %>% nrow  # 93 series
+
+# Tox in efficacious vs non-efficacious series
+obj_resp %>% 
+  group_by(AnalysisSeriesId) %>% 
+  filter(n > 0) %>% 
+  summarise(TotalResp = sum(Events), TotalN = sum(n)) %>% 
+  mutate(RespRate = TotalResp / TotalN) %>% 
+  filter(TotalResp > 0) %>% 
+  mutate(Class = 'Responses seen') -> efficacious_series
+efficacious_series %>% nrow  # 61 series
+
+
+obj_resp %>% 
+  group_by(AnalysisSeriesId) %>% 
+  filter(n > 0) %>% 
+  summarise(TotalResp = sum(Events), TotalN = sum(n)) %>% 
+  mutate(RespRate = TotalResp / TotalN) %>% 
+  filter(TotalResp == 0) %>% 
+  mutate(Class = 'No responses seen') -> non_efficacious_series
+non_efficacious_series %>% nrow  # 32 series
+```
+
+```{r}
+obj_resp %>% 
+  filter(n > 0) %>% 
+  left_join(studies, by = 'Study') %>% 
+  left_join(manuscripts, by = 'Manuscript') %>% 
+  left_join(bind_rows(efficacious_series, non_efficacious_series), 
+            by = 'AnalysisSeriesId') %>% 
+  filter(DoseVaryingTreatmentType %in% c('Chemotherapy', 
+                                         'Radiotherapy', 
+                                         'Monoclonal Antibody', 
+                                         'Inhibitor')) %>% 
+  filter(Class == 'Responses seen') %>% 
+  add_fitted_draws(obj_resp_mod) %>%
+  mutate(EstProbEvent = .value / n) %>% 
+  summarise(EstProbEvent = mean(EstProbEvent)) %>% 
+  ggplot(aes(x = DoseLevel, y = EstProbEvent, group = AnalysisSeriesId, 
+             col = DoseVaryingTreatmentType)) + 
+  geom_line(size = 1) + 
+  facet_wrap(~ DoseVaryingTreatmentType, ncol = 2) + 
+  xlim(-5, 5) +
+  labs(title = 'Fitted dose-response curves', col = 'Drug type', 
+       y = 'Prob(ObjectiveResponse)') + 
+  theme(legend.position = 'none')
+```
+
+
+### Parameters
+Intercept
+```{r}
+obj_resp_mod %>% 
+  spread_draws(b_Intercept) %>% 
+  ggplot(aes(x = b_Intercept)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response') + 
+  theme(legend.position = 'none')
+```
+
+DoseLevel
+```{r}
+obj_resp_mod %>% 
+  spread_draws(b_DoseLevel) %>% 
+  ggplot(aes(x = b_DoseLevel)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response per dose-level') + 
+  theme(legend.position = 'none')
+```
+Straddles zero.
+
+Effect of ContainsChemo
+```{r}
+obj_resp_mod %>% 
+  spread_draws(b_FixedDoseChemo) %>% 
+  ggplot(aes(x = b_FixedDoseChemo)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response') +
+  theme(legend.position = 'none')
+```
+Response much more likely when chemo-backbone included.
+
+Effect of ChiuzanRuleBased1
+```{r}
+obj_resp_mod %>% 
+  spread_draws(b_SourceChiuzanRuleBased1) %>% 
+  ggplot(aes(x = b_SourceChiuzanRuleBased1)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response') +
+  theme(legend.position = 'none')
+```
+
+Effect of HaemNonhaemHaematological
+```{r}
+obj_resp_mod %>% 
+  spread_draws(b_HaemNonhaemHaematological) %>% 
+  ggplot(aes(x = b_HaemNonhaemHaematological)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response') +
+  theme(legend.position = 'none')
+```
+Much more likely to see response in Haem trials.
+
+Effect of HaemNonhaemNonHaematological
+```{r}
+obj_resp_mod %>% 
+  spread_draws(b_HaemNonhaemNonHaematological) %>% 
+  ggplot(aes(x = b_HaemNonhaemNonHaematological)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response') +
+  theme(legend.position = 'none')
+```
+
+DoseLevel & ChiuzanRuleBased1
+```{r}
+obj_resp_mod %>% 
+  spread_draws(`b_DoseLevel:SourceChiuzanRuleBased1`) %>% 
+  ggplot(aes(x = `b_DoseLevel:SourceChiuzanRuleBased1`)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response per dose-level') + 
+  theme(legend.position = 'none')
+```
+
+DoseLevel & DoseLevel:HaemNonhaemHaematological
+```{r}
+obj_resp_mod %>% 
+  spread_draws(`b_DoseLevel:HaemNonhaemHaematological`) %>% 
+  ggplot(aes(x = `b_DoseLevel:HaemNonhaemHaematological`)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response per dose-level') + 
+  theme(legend.position = 'none')
+```
+
+DoseLevel & DoseLevel:HaemNonhaemNonHaematological
+```{r}
+obj_resp_mod %>% 
+  spread_draws(`b_DoseLevel:HaemNonhaemNonHaematological`) %>% 
+  ggplot(aes(x = `b_DoseLevel:HaemNonhaemNonHaematological`)) + 
+  geom_density() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response per dose-level') + 
+  theme(legend.position = 'none')
+```
+
+
+Mean or baseline or expected event rate.
+Note that the baseline rate adjustment for chemo is no longer captured by one variable.
+The samples for the ContainsChemo intercept adjustment should be added to the Chemo random effects:
+TODO: does this make sense? 
+```{r, message=FALSE, warning=FALSE}
+obj_resp_mod %>% 
+    spread_draws(r_DoseVaryingTreatmentType[TmtType,term]) %>%
+    filter(TmtType %in% c('Radiotherapy', 'Monoclonal.Antibody', 
+                          'Chemotherapy', 'Inhibitor')) %>% 
+    filter(term == 'Intercept') %>% 
+    rename(ParamValue = r_DoseVaryingTreatmentType) %>% 
+  mutate(TmtTypeO = factor(TmtType, levels = c('Monoclonal.Antibody',
+                                                   'Radiotherapy',
+                                                   'Inhibitor',
+                                                   'Chemotherapy'), 
+                               ordered = TRUE)) %>%
+  filter(term == 'Intercept') %>% 
+  ggplot(aes(y = TmtTypeO, group = TmtTypeO, fill = TmtTypeO, 
+             x = ParamValue)) + 
+  geom_density_ridges() + 
+  labs(x = 'Adjustment to log(odds) of Objective Response compared to entire dataset', 
+       y = 'Treatment type',
+       title = 'Distributions of baseline rates of Objective Response') +
+  theme(legend.position = 'none') + 
+  xlim(-2.5, 6)
+```
+Dose-varying chemo is associated with even greater chances of response.
+With other therapies, not.
+
+Sensitivity of event to increases in dose
+```{r}
+obj_resp_mod %>% 
+  spread_draws(r_DoseVaryingTreatmentType[TmtType,term]) %>%
+  filter(TmtType %in% c('Radiotherapy', 'Monoclonal.Antibody', 'Chemotherapy', 
+                        'Inhibitor')) %>% 
+  mutate(TmtTypeO = factor(TmtType, levels = c('Monoclonal.Antibody',
+                                               'Radiotherapy',
+                                               'Inhibitor',
+                                               'Chemotherapy'), 
+                           ordered = TRUE)) %>%
+  filter(term == 'DoseLevel') %>% 
+  ggplot(aes(y = TmtTypeO, group = TmtTypeO, fill = TmtTypeO, 
+             x = r_DoseVaryingTreatmentType)) + 
+  geom_density_ridges() + 
+  labs(x = 'Adjustment to gradient with respect to dose', 
+       y = 'Treatment type',
+       title = 'Distribution of sensitivity of Objective Response to dose increases') +
+  theme(legend.position = 'none') + 
+  xlim(-1.0, 1.0)
+```
+
+TODO this needs DoseLevel now

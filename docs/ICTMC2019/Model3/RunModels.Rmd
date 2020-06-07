@@ -1,0 +1,49 @@
+---
+title: "Run DLT and objective-response models"
+author: "Kristian Brock"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+This is done in a workbook to take advantage of the automatic setting of working directory.
+
+```{r}
+# This script in the root of the project loads the datasets
+source('../../../Load.R')
+
+library(brms)
+```
+
+
+
+```{r}
+dlt_mod <- brm(Events | trials(n) ~ 1 + DoseLevel + 
+                 FixedDoseChemo + 
+                 Source + Source:DoseLevel + 
+                 HaemNonhaem + HaemNonhaem:DoseLevel + 
+                 (1 + DoseLevel | AnalysisSeriesId) + 
+                 (1 + DoseLevel | DoseVaryingTreatmentType), 
+               data = dlt %>% 
+                 left_join(studies, by = 'Study') %>% 
+                 left_join(manuscripts, by = 'Manuscript'), 
+               family = binomial('logit'), 
+               control = list(adapt_delta = 0.99), cores = 4, seed = 123, 
+               iter = 3000, file = 'dlt_mod')
+```
+
+```{r}
+obj_resp_mod <- brm(Events | trials(n) ~ 1 + DoseLevel + 
+                      FixedDoseChemo + 
+                      Source + Source:DoseLevel + 
+                      HaemNonhaem + HaemNonhaem:DoseLevel + 
+                      (1 + DoseLevel | AnalysisSeriesId) + 
+                      (1 + DoseLevel | DoseVaryingTreatmentType), 
+                    data = obj_resp %>% 
+                      left_join(studies, by = 'Study') %>% 
+                      left_join(manuscripts, by = 'Manuscript') %>%  
+                      filter(n > 0), 
+                    family = binomial('logit'), 
+                    control = list(adapt_delta = 0.99), cores = 4, seed = 123,
+                    iter = 3000, file = 'obj_resp_mod')
+```
+
