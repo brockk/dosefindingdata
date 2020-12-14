@@ -1,0 +1,34 @@
+
+library(drake)
+
+# Fast loading and saving of most objects:
+target(
+  data.frame(x = runif(n), y = runif(n)),
+  format = "qs" # or fst
+)
+
+
+# To visualise only part of a complex multiplicative plan
+drake_plan(
+  max_expand = 2,
+  # etc
+)
+
+# To see construction of cross products etc
+drake_plan(
+  trace = TRUE,
+)
+
+model_functions <- rlang::syms(c("main", "altv"))
+
+# Static branching uses four transforms:
+# map(), cross(), split(), and combine()
+
+# All transformations have an optional .id arg to control the names of targets
+# E.g. .id = param2 or .id = c(param2, param1)
+
+# Check a plan using:
+plan
+# or
+drake_plan_source(plan)
+

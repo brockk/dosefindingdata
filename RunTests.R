@@ -1,2 +1,3 @@
 
-testthat::test_dir('tests/testthat/')
+library(here)
+testthat::test_dir(here('tests', 'testthat'))

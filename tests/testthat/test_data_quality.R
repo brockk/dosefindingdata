@@ -190,7 +190,7 @@ test_that('There are no per-patient binary outcomes where events exceeds n', {
   expect_equal(
     binary_events %>%
       left_join(outcomes, by = 'OutcomeId') %>%
-      filter(PerPatientOutcome) %>%
+      filter(PerPatientOutcome == 1) %>%
       filter(Events > n) %>%
       nrow,
     0)
@@ -228,3 +228,27 @@ test_that('The AnalysisSeriesIds for a study never span more than 30', {
   )
 })
 
+
+test_that('No AnalysisSeriesId is mapped to more than one Study.', {
+  
+  expect_equal(
+    dlt %>% 
+      group_by(AnalysisSeriesId, Study) %>% 
+      summarise(n = n(), .groups = 'drop') %>% 
+      group_by(AnalysisSeriesId) %>% 
+      summarise(n = n(), .groups = 'drop') %>% 
+      filter(n > 1) %>% nrow,  
+    0
+  )
+  
+  expect_equal(
+    obj_resp %>% 
+      group_by(AnalysisSeriesId, Study) %>% 
+      summarise(n = n(), .groups = 'drop') %>% 
+      group_by(AnalysisSeriesId) %>% 
+      summarise(n = n(), .groups = 'drop') %>% 
+      filter(n > 1) %>% nrow,  
+    0
+  )
+  
+})

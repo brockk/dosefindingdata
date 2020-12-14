@@ -9,3 +9,4 @@ dlt_mod.rds
 dlt_fitted_draws.rds
 obj_resp_mod.rds
 obj_resp_fitted_draws.rds
+analysis/manual/.cache/*
