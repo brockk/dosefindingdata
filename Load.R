@@ -12,7 +12,9 @@ library(here)
 # v1.1:
 # data_url <- 'http://edata.bham.ac.uk/337/2/Database_v1.1.xlsx'
 # v1.2:
-data_url <- 'http://edata.bham.ac.uk/337/3/Database_v1.2.xlsx'
+# data_url <- 'http://edata.bham.ac.uk/337/3/Database_v1.2.xlsx'
+# v1.3:
+data_url <- 'http://edata.bham.ac.uk/337/3/Database_v1.3.xlsx'
 GET(data_url, write_disk(file_loc <- tempfile(fileext = ".xlsx")))
 # Or load locally (n.b. change path to suit):
 # file_loc <- here('..', 'Database.xlsx')
